@@ -1,12 +1,14 @@
-require('dotenv').config();
-const sdk = require('node-appwrite');
-const { exec } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import dotenv from 'dotenv';
+import { Client, Storage } from 'node-appwrite';
+import { exec } from 'child_process';
+import fs from 'fs';
+import path from 'path';
 
-module.exports = async function(req, res) {
-  const client = new sdk.Client();
-  const storage = new sdk.Storage(client);
+dotenv.config();
+
+export default async function(req, res) {
+  const client = new Client();
+  const storage = new Storage(client);
 
   client
     .setEndpoint(process.env.APPWRITE_ENDPOINT)
