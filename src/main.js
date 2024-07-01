@@ -61,7 +61,9 @@ export default async function(req, res) {
         if (error) {
           console.error(`exec error: ${error}`);
           responseMessages.push(`exec error: ${error.message}\n`);
-          return res.send({ message: responseMessages.join(''), error: error.message });
+          res.write(JSON.stringify({ message: responseMessages.join(''), error: error.message }));
+          res.end();
+          return;
         }
 
         console.log(`stdout: ${stdout}`);
@@ -95,18 +97,20 @@ export default async function(req, res) {
         responseMessages.push(`HLS URLs: ${JSON.stringify(hlsUrls)}\n`);
         responseMessages.push(`Thumbnail URL: ${thumbnailUrl}\n`);
 
-        res.send({
+        res.write(JSON.stringify({
           message: responseMessages.join(''),
           hlsUrls,
           thumbnailUrl
-        });
+        }));
+        res.end();
       });
     });
 
   } catch (error) {
     console.error('Error in cloud function:', error);
     responseMessages.push(`Error in cloud function: ${error.message}\n`);
-    res.send({ message: responseMessages.join(''), error: error.message });
+    res.write(JSON.stringify({ message: responseMessages.join(''), error: error.message }));
+    res.end();
   }
 }
 
