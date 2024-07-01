@@ -28,12 +28,15 @@ export default async function(req, res) {
     writer.on('finish', async () => {
       const outputPath = path.join('/tmp', fileId, 'output');
       const hlsPath = path.join(outputPath, 'index.m3u8');
+      const thumbnailPath = path.join(outputPath, 'thumbnail.jpg');
 
       if (!fs.existsSync(outputPath)) {
         fs.mkdirSync(outputPath, { recursive: true });
       }
 
-      const ffmpegCommand = `ffmpeg -i ${filePath} -codec:v libx264 -codec:a aac -hls_time 10 -hls_playlist_type vod -hls_segment_filename "${outputPath}/segment%03d.ts" -start_number 0 ${hlsPath}`;
+      const ffmpegCommand = `
+        ffmpeg -i ${filePath} -codec:v libx264 -codec:a aac -hls_time 10 -hls_playlist_type vod -hls_segment_filename "${outputPath}/segment%03d.ts" -start_number 0 ${hlsPath} -vf "thumbnail" -frames:v 1 ${thumbnailPath}
+      `;
 
       exec(ffmpegCommand, async (error, stdout, stderr) => {
         if (error) {
@@ -59,12 +62,17 @@ export default async function(req, res) {
           });
         }
 
+        const thumbnailBuffer = fs.readFileSync(thumbnailPath);
+        const thumbnailFile = await storage.createFile(process.env.BUCKET_ID, 'unique()', thumbnailBuffer, ['role:all'], ['role:all']);
+        const thumbnailUrl = getFilePreview(thumbnailFile.$id);
+
         fs.unlinkSync(filePath);
         fs.rmdirSync(outputPath, { recursive: true });
 
         res.json({
           message: "Video converted to HLS format",
-          hlsUrls
+          hlsUrls,
+          thumbnailUrl
         });
       });
     });
@@ -74,3 +82,4 @@ export default async function(req, res) {
     res.json({ error: error.message });
   }
 };
+
