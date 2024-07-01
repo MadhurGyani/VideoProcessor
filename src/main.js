@@ -8,7 +8,7 @@ dotenv.config();
 
 export default async function(req, res) {
   let responseMessages = [];
-  
+
   try {
     if (!req.payload) {
       throw new Error('Payload is missing');
@@ -61,8 +61,7 @@ export default async function(req, res) {
         if (error) {
           console.error(`exec error: ${error}`);
           responseMessages.push(`exec error: ${error.message}\n`);
-          res.json({ message: responseMessages.join(''), error: error.message });
-          return;
+          return res.send({ message: responseMessages.join(''), error: error.message });
         }
 
         console.log(`stdout: ${stdout}`);
@@ -96,7 +95,7 @@ export default async function(req, res) {
         responseMessages.push(`HLS URLs: ${JSON.stringify(hlsUrls)}\n`);
         responseMessages.push(`Thumbnail URL: ${thumbnailUrl}\n`);
 
-        res.json({
+        res.send({
           message: responseMessages.join(''),
           hlsUrls,
           thumbnailUrl
@@ -107,7 +106,7 @@ export default async function(req, res) {
   } catch (error) {
     console.error('Error in cloud function:', error);
     responseMessages.push(`Error in cloud function: ${error.message}\n`);
-    res.json({ message: responseMessages.join(''), error: error.message });
+    res.send({ message: responseMessages.join(''), error: error.message });
   }
 }
 
