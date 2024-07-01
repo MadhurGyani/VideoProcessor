@@ -7,12 +7,14 @@ import path from 'path';
 dotenv.config();
 
 export default async function(req, res) {
+  let responseMessages = [];
+  
   try {
     if (!req.payload) {
       throw new Error('Payload is missing');
     }
 
-    res.write('Received payload\n');
+    responseMessages.push('Received payload\n');
     console.log('Received payload:', req.payload);
 
     let payload;
@@ -24,7 +26,7 @@ export default async function(req, res) {
 
     const fileId = payload.fileId;
     console.log('Parsed fileId:', fileId);
-    res.write(`Parsed fileId: ${fileId}\n`);
+    responseMessages.push(`Parsed fileId: ${fileId}\n`);
 
     const client = new Client();
     const storage = new Storage(client);
@@ -41,7 +43,7 @@ export default async function(req, res) {
     file.pipe(writer);
 
     writer.on('finish', async () => {
-      res.write('File download completed\n');
+      responseMessages.push('File download completed\n');
 
       const outputPath = path.join('/tmp', fileId, 'output');
       const hlsPath = path.join(outputPath, 'index.m3u8');
@@ -58,14 +60,15 @@ export default async function(req, res) {
       exec(ffmpegCommand, async (error, stdout, stderr) => {
         if (error) {
           console.error(`exec error: ${error}`);
-          res.write(`exec error: ${error.message}\n`);
-          return res.end();
+          responseMessages.push(`exec error: ${error.message}\n`);
+          res.json({ message: responseMessages.join(''), error: error.message });
+          return;
         }
 
         console.log(`stdout: ${stdout}`);
         console.log(`stderr: ${stderr}`);
-        res.write(`FFmpeg stdout: ${stdout}\n`);
-        res.write(`FFmpeg stderr: ${stderr}\n`);
+        responseMessages.push(`FFmpeg stdout: ${stdout}\n`);
+        responseMessages.push(`FFmpeg stderr: ${stderr}\n`);
 
         const hlsFiles = fs.readdirSync(outputPath).map(file => ({
           path: path.join(outputPath, file),
@@ -89,17 +92,22 @@ export default async function(req, res) {
         fs.unlinkSync(filePath);
         fs.rmdirSync(outputPath, { recursive: true });
 
-        res.write('Video converted to HLS format\n');
-        res.write(`HLS URLs: ${JSON.stringify(hlsUrls)}\n`);
-        res.write(`Thumbnail URL: ${thumbnailUrl}\n`);
-        res.end();
+        responseMessages.push('Video converted to HLS format\n');
+        responseMessages.push(`HLS URLs: ${JSON.stringify(hlsUrls)}\n`);
+        responseMessages.push(`Thumbnail URL: ${thumbnailUrl}\n`);
+
+        res.json({
+          message: responseMessages.join(''),
+          hlsUrls,
+          thumbnailUrl
+        });
       });
     });
 
   } catch (error) {
     console.error('Error in cloud function:', error);
-    res.write(`Error in cloud function: ${error.message}\n`);
-    res.end();
+    responseMessages.push(`Error in cloud function: ${error.message}\n`);
+    res.json({ message: responseMessages.join(''), error: error.message });
   }
 }
 
