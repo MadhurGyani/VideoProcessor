@@ -12,6 +12,7 @@ export default async function(req, res) {
       throw new Error('Payload is missing');
     }
 
+    res.write('Received payload\n');
     console.log('Received payload:', req.payload);
 
     let payload;
@@ -23,6 +24,7 @@ export default async function(req, res) {
 
     const fileId = payload.fileId;
     console.log('Parsed fileId:', fileId);
+    res.write(`Parsed fileId: ${fileId}\n`);
 
     const client = new Client();
     const storage = new Storage(client);
@@ -39,6 +41,8 @@ export default async function(req, res) {
     file.pipe(writer);
 
     writer.on('finish', async () => {
+      res.write('File download completed\n');
+
       const outputPath = path.join('/tmp', fileId, 'output');
       const hlsPath = path.join(outputPath, 'index.m3u8');
       const thumbnailPath = path.join(outputPath, 'thumbnail.jpg');
@@ -54,11 +58,14 @@ export default async function(req, res) {
       exec(ffmpegCommand, async (error, stdout, stderr) => {
         if (error) {
           console.error(`exec error: ${error}`);
-          return res.json({ error: error.message });
+          res.write(`exec error: ${error.message}\n`);
+          return res.end();
         }
 
         console.log(`stdout: ${stdout}`);
         console.log(`stderr: ${stderr}`);
+        res.write(`FFmpeg stdout: ${stdout}\n`);
+        res.write(`FFmpeg stderr: ${stderr}\n`);
 
         const hlsFiles = fs.readdirSync(outputPath).map(file => ({
           path: path.join(outputPath, file),
@@ -82,20 +89,19 @@ export default async function(req, res) {
         fs.unlinkSync(filePath);
         fs.rmdirSync(outputPath, { recursive: true });
 
-        res.json({
-          message: "Video converted to HLS format",
-          hlsUrls,
-          thumbnailUrl
-        });
+        res.write('Video converted to HLS format\n');
+        res.write(`HLS URLs: ${JSON.stringify(hlsUrls)}\n`);
+        res.write(`Thumbnail URL: ${thumbnailUrl}\n`);
+        res.end();
       });
     });
 
   } catch (error) {
     console.error('Error in cloud function:', error);
-    res.json({ error: error.message });
+    res.write(`Error in cloud function: ${error.message}\n`);
+    res.end();
   }
-};
-
+}
 
 // Function to get the file preview URL
 function getFilePreview(fileId) {
