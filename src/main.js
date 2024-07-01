@@ -8,9 +8,19 @@ dotenv.config();
 
 export default async function(req, res) {
   try {
+    if (!req.payload) {
+      throw new Error('Payload is missing');
+    }
+
     console.log('Received payload:', req.payload);
-    
-    const payload = JSON.parse(req.payload);
+
+    let payload;
+    try {
+      payload = JSON.parse(req.payload);
+    } catch (error) {
+      throw new Error('Failed to parse payload: ' + error.message);
+    }
+
     const fileId = payload.fileId;
     console.log('Parsed fileId:', fileId);
 
